@@ -1,0 +1,17 @@
+[
+  {
+    "group": {
+      "name": "osaps_typesetting"
+    },
+    "setting": {
+      "name": "osaps_instance_url",
+      "pretty_name": "OS-APS Instance URL",
+      "description": "URL of the OS-APS instance typesetters will use. Use the public demo or your self-hosted instance.",
+      "type": "rich-text",
+      "is_translatable": false
+    },
+    "value": {
+      "default": "https://os-aps.sciflow.net/start"
+    }
+  }
+]

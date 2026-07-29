@@ -1,0 +1,72 @@
+{% extends "admin/core/base.html" %}
+{% load foundation %}
+
+{% block title %}Assign Typesetter{% endblock %}
+{% block title-section %}Assign Typesetter{% endblock %}
+{% block title-sub %}{% include "osaps_typesetting/elements/title_sub.html" %}{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    {% include "osaps_typesetting/elements/breadcrumbs.html" %}
+    <li>Assign Typesetter</li>
+{% endblock breadcrumbs %}
+
+{% block body %}
+<div class="large-8 columns">
+    <div class="box">
+        <div class="title-area">
+            <h2>{% if assignment %}Edit the assignment{% else %}Assign a typesetter{% endif %}</h2>
+        </div>
+        <div class="content">
+            <p>
+                Round {{ round.round_number }}. Choose a typesetter and the files
+                they should take into OS-APS. They will be able to download those
+                files, work in OS-APS, and upload the exported PDF or HTML back
+                to Janeway as galleys.
+            </p>
+            {% if assignment %}
+                <div class="callout primary">
+                    This round already has an assignment
+                    {% if assignment.typesetter %}with
+                        {{ assignment.typesetter.full_name }}{% endif %}.
+                    Saving will update it rather than create a second one.
+                </div>
+            {% endif %}
+            <p class="help-text">
+                Assigning is optional &mdash; an editor can typeset the article
+                themselves from the article page.
+            </p>
+        </div>
+    </div>
+
+    <form method="POST">
+        {% include "elements/forms/errors.html" %}
+        {% csrf_token %}
+        <div class="box">
+            <div class="content">
+                {{ form|foundation }}
+                <button type="submit" class="button success">
+                    {% if assignment %}Save Assignment{% else %}Assign Typesetter{% endif %}
+                </button>
+                <a href="{% url 'osaps_typesetting_article' article.pk %}"
+                   class="button secondary">Cancel</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="large-4 columns">
+    <div class="box">
+        <div class="title-area">
+            <h2>No typesetters listed?</h2>
+        </div>
+        <div class="content">
+            <p>
+                Only accounts holding the <strong>typesetter</strong> role on this
+                journal can be assigned. Add the role from the journal's user
+                management pages, then come back here.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock body %}

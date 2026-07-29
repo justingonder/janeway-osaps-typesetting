@@ -1,0 +1,218 @@
+{% extends "admin/core/base.html" %}
+{% load foundation %}
+
+{% block title %}Edit Galley{% endblock %}
+{% block title-section %}Edit Galley{% endblock %}
+{% block title-sub %}{% include "osaps_typesetting/elements/title_sub.html" %}{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    {% include "osaps_typesetting/elements/breadcrumbs.html" %}
+    <li>Edit Galley {{ galley.label }}</li>
+{% endblock breadcrumbs %}
+
+{% block body %}
+<div class="large-8 columns">
+    <div class="box">
+        <div class="title-area">
+            <h2>{{ galley.label }} &mdash; {{ galley.file.original_filename }}</h2>
+        </div>
+        <div class="content">
+            <dl>
+                <dt>Galley ID</dt>
+                <dd>{{ galley.pk }}</dd>
+                <dt>Type</dt>
+                <dd>{{ galley.type }}</dd>
+                <dt>Last modified</dt>
+                <dd>{{ galley.file.last_modified }}</dd>
+                <dt>Publicly visible</dt>
+                <dd>{% if galley.public %}Yes{% else %}No{% endif %}</dd>
+            </dl>
+
+            <form method="POST">
+                {% csrf_token %}
+                {{ galley_form|foundation }}
+                <button type="submit" name="galley-update" class="button success">
+                    Save Details
+                </button>
+            </form>
+        </div>
+    </div>
+
+    {% if galley.file.mime_type in galley.mimetypes_with_figures %}
+    <div class="box">
+        <div class="title-area">
+            <h2>Figures</h2>
+        </div>
+        <div class="content">
+            <p>
+                This galley references the files listed below. Every one of them
+                must be attached here, using exactly the filename the galley
+                expects, or the article will publish with broken images.
+            </p>
+
+            <table class="small">
+                <thead>
+                    <tr>
+                        <th>Referenced file</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for element in galley.all_images %}
+                    <tr>
+                        <td>{{ element }}</td>
+                        <td>
+                            {% if element in image_names %}
+                                <span class="label success">Attached</span>
+                            {% else %}
+                                <span class="label alert">Missing</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="2">
+                            This galley does not reference any images.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% for element in galley.has_missing_image_files %}
+                {% if element not in image_names %}
+                <div class="callout warning">
+                    <h5>Missing: {{ element }}</h5>
+                    <form method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input name="file_name" type="hidden" value="{{ element }}">
+                        <label for="label-{{ forloop.counter }}">Label</label>
+                        <input name="label" id="label-{{ forloop.counter }}"
+                               placeholder="eg. Figure 1">
+                        <label for="image-{{ forloop.counter }}">Upload the file</label>
+                        <input name="image" id="image-{{ forloop.counter }}" type="file">
+                        {% if data_files %}
+                            <label for="datafile-{{ forloop.counter }}">
+                                Or use a figure already attached to the article
+                            </label>
+                            <select name="datafile" id="datafile-{{ forloop.counter }}">
+                                <option value="">---------</option>
+                                {% for file in data_files %}
+                                    {% if file not in galley_images %}
+                                        <option value="{{ file.pk }}">
+                                            {{ file.label }} ({{ file.original_filename }})
+                                        </option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        {% endif %}
+                        <button type="submit" name="fixed-image-upload"
+                                class="button success">
+                            <i class="fa fa-upload">&nbsp;</i>Attach as {{ element }}
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+            {% endfor %}
+
+            <h3>Add another image</h3>
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <label for="extra-label">Label</label>
+                <input name="label" id="extra-label" placeholder="eg. Figure 2">
+                <label for="extra-image">File</label>
+                <input name="image" id="extra-image" type="file">
+                <button type="submit" name="image-upload" class="button">
+                    <i class="fa fa-upload">&nbsp;</i>Upload Image
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="box">
+        <div class="title-area">
+            <h2>Stylesheet</h2>
+        </div>
+        <div class="content">
+            <p>
+                If the OS-APS export needs its own CSS, upload it here. It is
+                served alongside this galley only.
+            </p>
+            {% if galley.css_file %}
+                <p>
+                    Current stylesheet:
+                    {{ galley.css_file.original_filename }}
+                    (uploaded {{ galley.css_file.date_uploaded }})
+                </p>
+            {% endif %}
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <label for="css">CSS file</label>
+                <input name="css" id="css" type="file">
+                <button type="submit" name="css-upload" class="button">
+                    <i class="fa fa-upload">&nbsp;</i>Upload Stylesheet
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="box">
+        <div class="title-area">
+            <h2>Replace the galley file</h2>
+        </div>
+        <div class="content">
+            <p>
+                Re-exported from OS-APS? Upload the new file here. The galley
+                keeps its ID, label and attached images.
+            </p>
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <label for="galley">Replacement file</label>
+                <input name="galley" id="galley" type="file">
+                <button type="submit" name="replace-galley" class="button">
+                    <i class="fa fa-upload">&nbsp;</i>Replace File
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="large-4 columns">
+    <div class="box">
+        <div class="title-area">
+            <h2>Attached Images</h2>
+        </div>
+        <div class="content">
+            <table class="small">
+                <thead>
+                    <tr>
+                        <th>Filename</th>
+                        <th>Label</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for image in galley_images %}
+                    <tr>
+                        <td>{{ image.original_filename }}</td>
+                        <td>{{ image.label }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="2">No images attached yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="box">
+        <div class="content">
+            <a href="{% url 'osaps_typesetting_article' article.pk %}"
+               class="button secondary expanded">Back to the article</a>
+        </div>
+    </div>
+</div>
+{% endblock body %}

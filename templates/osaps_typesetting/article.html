@@ -1,0 +1,255 @@
+{% extends "admin/core/base.html" %}
+{% load foundation %}
+
+{% block title %}OS-APS Typesetting{% endblock %}
+{% block title-section %}OS-APS Typesetting{% endblock %}
+{% block title-sub %}{% include "osaps_typesetting/elements/title_sub.html" %}{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    {% include "osaps_typesetting/elements/breadcrumbs.html" %}
+{% endblock breadcrumbs %}
+
+{% block body %}
+<div class="large-8 columns">
+    <div class="box">
+        <div class="title-area">
+            <h2>Typesetting Task</h2>
+            {% include "osaps_typesetting/elements/status.html" with assignment=assignment %}
+        </div>
+        <div class="content">
+            <dl>
+                <dt>Current round</dt>
+                <dd>
+                    {% if round %}
+                        Round {{ round.round_number }}, opened {{ round.date_started }}
+                    {% else %}
+                        No round has been opened yet
+                    {% endif %}
+                </dd>
+                <dt>Typesetter</dt>
+                <dd>
+                    {% if assignment.typesetter %}
+                        {{ assignment.typesetter.full_name }}
+                        ({{ assignment.typesetter.email }}),
+                        assigned {{ assignment.assigned }}
+                        {% if assignment.due %}, due {{ assignment.due }}{% endif %}
+                    {% else %}
+                        Nobody is assigned. You can assign a typesetter, or
+                        typeset the article yourself.
+                    {% endif %}
+                </dd>
+                {% if assignment.task %}
+                    <dt>Notes for the typesetter</dt>
+                    <dd>{{ assignment.task }}</dd>
+                {% endif %}
+                {% if assignment.completed %}
+                    <dt>Typesetter finished</dt>
+                    <dd>{{ assignment.completed }}</dd>
+                {% endif %}
+                {% if assignment.typesetter_note %}
+                    <dt>Note from the typesetter</dt>
+                    <dd>{{ assignment.typesetter_note }}</dd>
+                {% endif %}
+            </dl>
+
+            {% if round %}
+                <a href="{% url 'osaps_typesetting_assign' article.pk %}" class="button">
+                    {% if assignment.typesetter %}Edit Assignment{% else %}Assign Typesetter{% endif %}
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="box">
+        <div class="title-area">
+            <h2>Files for Typesetting</h2>
+        </div>
+        <div class="content">
+            <p>
+                These are the files available to send into OS-APS. Tick the ones
+                a typesetter should work on when you assign them.
+            </p>
+            <table class="small">
+                <thead>
+                    <tr>
+                        <th>Label</th>
+                        <th>Filename</th>
+                        <th>Uploaded</th>
+                        <th>Sent to typesetter</th>
+                        <th>Download</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for file in files %}
+                    <tr>
+                        <td>{{ file.label }}</td>
+                        <td>{{ file.original_filename|truncatechars:40 }}</td>
+                        <td>{{ file.date_uploaded }}</td>
+                        <td>
+                            {% if file in assignment.files_to_typeset.all %}Yes{% else %}No{% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'article_file_download' 'id' article.pk file.pk %}"
+                               aria-label="Download {{ file.original_filename }}">
+                                <i class="fa fa-download">&nbsp;</i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5">No files are available for typesetting.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="box">
+        <div class="title-area">
+            <h2>Galleys</h2>
+        </div>
+        <div class="content">
+            <table class="small">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Label</th>
+                        <th>Filename</th>
+                        <th>Public</th>
+                        <th>Modified</th>
+                        <th>Figures</th>
+                        <th>Edit</th>
+                        <th>Download</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for galley in galleys %}
+                    <tr>
+                        <td>{{ galley.pk }}</td>
+                        <td>{{ galley.label }}</td>
+                        <td>{{ galley.file.original_filename|truncatechars:40 }}</td>
+                        <td>{% if galley.public %}Yes{% else %}No{% endif %}</td>
+                        <td>{{ galley.file.last_modified }}</td>
+                        <td>
+                            {% if galley.has_missing_image_files %}
+                                <span class="label alert">Missing figures</span>
+                            {% else %}
+                                &mdash;
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'osaps_typesetting_edit_galley' article.pk galley.pk %}"
+                               aria-label="Edit galley {{ galley.label }}">
+                                <i class="fa fa-edit">&nbsp;</i>Edit
+                            </a>
+                        </td>
+                        <td>
+                            <a href="{% url 'article_file_download' 'id' article.pk galley.file.pk %}"
+                               aria-label="Download galley {{ galley.label }}">
+                                <i class="fa fa-download">&nbsp;</i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8">No galleys have been created yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <h3>Upload a file exported from OS-APS</h3>
+            <form method="POST" enctype="multipart/form-data"
+                  action="{% url 'osaps_typesetting_upload_galley' article.pk %}">
+                {% csrf_token %}
+                {{ galley_form|foundation }}
+                <button type="submit" class="button success">
+                    <i class="fa fa-upload">&nbsp;</i>Upload as Galley
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="box">
+        <div class="title-area">
+            <h2>Complete Typesetting</h2>
+        </div>
+        <div class="content">
+            {% if assignment and not assignment.completed and not assignment.cancelled %}
+                <div class="callout warning">
+                    {{ assignment.typesetter.full_name }} has not marked their task
+                    complete yet. Completing the stage will close their task.
+                </div>
+            {% endif %}
+            {% if not galleys %}
+                <div class="callout alert">
+                    This article has no galleys. Completing typesetting will move
+                    it to the next workflow stage with nothing to publish.
+                </div>
+            {% endif %}
+            <p>
+                This closes OS-APS typesetting and moves the article to the next
+                stage in the journal's workflow.
+            </p>
+            <form method="POST" action="{% url 'osaps_typesetting_complete' article.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="button success">
+                    Complete Typesetting &amp; Advance Workflow
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="large-4 columns">
+    <div class="box">
+        <div class="title-area">
+            <h2>Article</h2>
+        </div>
+        <div class="content">
+            <dl>
+                <dt>Section</dt>
+                <dd>{{ article.section.name|default:"Not set" }}</dd>
+                <dt>Owner / correspondence author</dt>
+                <dd>{{ article.correspondence_author.full_name|default:"Not set" }}</dd>
+                <dt>Projected issue</dt>
+                <dd>
+                    {% if article.projected_issue %}
+                        {{ article.projected_issue.display_title }}
+                    {% else %}
+                        Not set
+                    {% endif %}
+                </dd>
+                <dt>Editors</dt>
+                <dd>
+                    {% for assign in article.editors %}
+                        {% include "elements/avatar.html" with user=assign.editor role=assign.editor_type %}
+                    {% empty %}
+                        None assigned
+                    {% endfor %}
+                </dd>
+            </dl>
+        </div>
+    </div>
+
+    <div class="box">
+        <div class="title-area">
+            <h2>Rounds</h2>
+        </div>
+        <div class="content">
+            <ul class="no-bullet">
+                {% for item in rounds %}
+                    <li>
+                        <strong>Round {{ item.round_number }}</strong>
+                        &mdash; opened {{ item.date_started }}
+                    </li>
+                {% empty %}
+                    <li>No rounds yet.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock body %}

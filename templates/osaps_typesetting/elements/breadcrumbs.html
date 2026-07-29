@@ -1,0 +1,9 @@
+<li>
+    <a href="{% url 'osaps_typesetting_articles' %}">Articles in OS-APS Typesetting</a>
+</li>
+
+{% if article %}
+    <li>
+        <a href="{% url 'osaps_typesetting_article' article.pk %}">{{ article.safe_title }}</a>
+    </li>
+{% endif %}

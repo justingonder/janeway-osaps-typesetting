@@ -1,0 +1,112 @@
+{% extends "admin/core/base.html" %}
+
+{% block title %}Your OS-APS Typesetting Tasks{% endblock %}
+{% block title-section %}Your OS-APS Typesetting Tasks{% endblock %}
+{% block title-sub %}Articles waiting for you to typeset{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li>Your Typesetting Tasks</li>
+{% endblock breadcrumbs %}
+
+{% block body %}
+<div class="large-12 columns">
+    <div class="box">
+        <div class="title-area">
+            <h2>Open Tasks</h2>
+        </div>
+        <div class="content">
+            <table class="small scroll" id="open-tasks">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th style="width: 35%">Article</th>
+                        <th>Round</th>
+                        <th>Assigned</th>
+                        <th>Due</th>
+                        <th>Files</th>
+                        <th>Galleys</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for assignment in active_assignments %}
+                    <tr>
+                        <td>{{ assignment.round.article.pk }}</td>
+                        <td>{{ assignment.round.article.safe_title }}</td>
+                        <td>{{ assignment.round.round_number }}</td>
+                        <td>{{ assignment.assigned }}</td>
+                        <td>
+                            {% if assignment.due %}
+                                {{ assignment.due }}
+                            {% else %}
+                                No due date
+                            {% endif %}
+                        </td>
+                        <td>{{ assignment.files_to_typeset.count }}</td>
+                        <td>{{ assignment.galleys_created.count }}</td>
+                        <td>
+                            <a href="{% url 'osaps_typesetting_assignment' assignment.pk %}"
+                               class="button tiny success">Open Task</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8">You have no open typesetting tasks.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="box">
+        <div class="title-area">
+            <h2>Closed Tasks</h2>
+        </div>
+        <div class="content">
+            <table class="small scroll" id="closed-tasks">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th style="width: 35%">Article</th>
+                        <th>Round</th>
+                        <th>Status</th>
+                        <th>Galleys</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for assignment in past_assignments %}
+                    <tr>
+                        <td>{{ assignment.round.article.pk }}</td>
+                        <td>{{ assignment.round.article.safe_title }}</td>
+                        <td>{{ assignment.round.round_number }}</td>
+                        <td>
+                            {% if assignment.cancelled %}
+                                Cancelled {{ assignment.cancelled }}
+                            {% else %}
+                                Completed {{ assignment.completed }}
+                            {% endif %}
+                        </td>
+                        <td>{{ assignment.galleys_created.count }}</td>
+                        <td>
+                            <a href="{% url 'osaps_typesetting_assignment' assignment.pk %}"
+                               class="button tiny secondary">View</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6">You have no closed typesetting tasks.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock body %}
+
+{% block js %}
+    {% include "elements/datatables.html" with target="#open-tasks #closed-tasks" %}
+{% endblock js %}

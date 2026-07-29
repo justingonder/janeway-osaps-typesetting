@@ -1,0 +1,69 @@
+{% extends "admin/core/base.html" %}
+
+{% block title %}Articles in OS-APS Typesetting{% endblock %}
+{% block title-section %}OS-APS Typesetting{% endblock %}
+{% block title-sub %}Articles currently in this stage{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li>Articles in OS-APS Typesetting</li>
+{% endblock breadcrumbs %}
+
+{% block body %}
+<div class="large-12 columns">
+    <div class="box">
+        <div class="title-area">
+            <h2>Articles in OS-APS Typesetting</h2>
+        </div>
+        <div class="content">
+            <table class="small scroll" id="articles">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th style="width: 30%">Title</th>
+                        <th>Section</th>
+                        <th>Author</th>
+                        <th>Round</th>
+                        <th>Typesetter</th>
+                        <th>Status</th>
+                        <th>Galleys</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>
+                        <td>{{ row.article.pk }}</td>
+                        <td>{{ row.article.safe_title }}</td>
+                        <td>{{ row.article.section.name }}</td>
+                        <td>{{ row.article.correspondence_author.full_name }}</td>
+                        <td>{% if row.round %}{{ row.round.round_number }}{% else %}&mdash;{% endif %}</td>
+                        <td>
+                            {% if row.assignment.typesetter %}
+                                {{ row.assignment.typesetter.full_name }}
+                            {% else %}
+                                &mdash;
+                            {% endif %}
+                        </td>
+                        <td>{% include "osaps_typesetting/elements/status.html" with assignment=row.assignment %}</td>
+                        <td>{{ row.galley_count }}</td>
+                        <td>
+                            <a href="{% url 'osaps_typesetting_article' row.article.pk %}"
+                               class="button tiny">Manage</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9">No articles are in this stage.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock body %}
+
+{% block js %}
+    {% include "elements/datatables.html" with target="#articles" %}
+{% endblock js %}

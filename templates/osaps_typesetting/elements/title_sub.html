@@ -1,0 +1,3 @@
+#{{ article.pk }}
+{% if article.correspondence_author %}/ {{ article.correspondence_author.last_name }}{% endif %}
+/ {{ article.safe_title }}

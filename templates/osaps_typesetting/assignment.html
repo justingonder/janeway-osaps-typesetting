@@ -1,0 +1,235 @@
+{% extends "admin/core/base.html" %}
+{% load foundation %}
+
+{% block title %}Typesetting Task{% endblock %}
+{% block title-section %}OS-APS Typesetting Task{% endblock %}
+{% block title-sub %}{% include "osaps_typesetting/elements/title_sub.html" %}{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'osaps_typesetting_assignments' %}">Your Typesetting Tasks</a></li>
+    <li>{{ article.safe_title }}</li>
+{% endblock breadcrumbs %}
+
+{% block body %}
+<div class="large-8 columns">
+    <div class="box">
+        <div class="title-area">
+            <h2>{{ article.safe_title }}</h2>
+            {% include "osaps_typesetting/elements/status.html" with assignment=assignment %}
+        </div>
+        <div class="content">
+            <dl>
+                <dt>Round</dt>
+                <dd>{{ assignment.round.round_number }}</dd>
+                <dt>Assigned</dt>
+                <dd>{{ assignment.assigned }}{% if assignment.manager %} by {{ assignment.manager.full_name }}{% endif %}</dd>
+                <dt>Due</dt>
+                <dd>{% if assignment.due %}{{ assignment.due }}{% else %}No due date set{% endif %}</dd>
+                {% if assignment.task %}
+                    <dt>Notes from the editor</dt>
+                    <dd>{{ assignment.task }}</dd>
+                {% endif %}
+            </dl>
+
+            {% if assignment.cancelled %}
+                <div class="callout alert">
+                    This task was cancelled on {{ assignment.cancelled }}. No
+                    further changes can be made.
+                </div>
+            {% elif assignment.completed %}
+                <div class="callout success">
+                    You marked this task complete on {{ assignment.completed }}.
+                    {% if assignment.typesetter_note %}
+                        <br>Your note: {{ assignment.typesetter_note }}
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="box">
+        <div class="title-area">
+            <h2>Step 1 &mdash; Download the manuscript</h2>
+        </div>
+        <div class="content">
+            <table class="small">
+                <thead>
+                    <tr>
+                        <th>Label</th>
+                        <th>Filename</th>
+                        <th>Uploaded</th>
+                        <th>Download</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for file in files %}
+                    <tr>
+                        <td>{{ file.label }}</td>
+                        <td>{{ file.original_filename|truncatechars:40 }}</td>
+                        <td>{{ file.date_uploaded }}</td>
+                        <td>
+                            <a href="{% url 'osaps_typesetting_download_file' assignment.pk file.pk %}"
+                               aria-label="Download {{ file.original_filename }}">
+                                <i class="fa fa-download">&nbsp;</i>Download
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4">
+                            No files were attached to this task. Ask the editor to
+                            add them to your assignment.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="box">
+        <div class="title-area">
+            <h2>Step 2 &mdash; Work in OS-APS</h2>
+        </div>
+        <div class="content">
+            <p>
+                Upload the manuscript to OS-APS, check and correct the conversion
+                in the editor, then export the formats this article needs
+                &mdash; typically PDF and HTML.
+            </p>
+            {% if osaps_instance_url %}
+                <a href="{{ osaps_instance_url }}" target="_blank"
+                   rel="noopener noreferrer" class="button">
+                    <i class="fa fa-external-link">&nbsp;</i>Open OS-APS
+                </a>
+                <p class="help-text">Opens {{ osaps_instance_url }} in a new tab.</p>
+            {% else %}
+                <div class="callout warning">
+                    No OS-APS instance URL has been configured for this journal.
+                    An editor can set one in the plugin manager.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="box">
+        <div class="title-area">
+            <h2>Step 3 &mdash; Upload what you exported</h2>
+        </div>
+        <div class="content">
+            {% if not assignment.completed and not assignment.cancelled %}
+                <p>
+                    Upload each exported file separately. Janeway works out the
+                    galley type from the file; the label is optional.
+                </p>
+                <form method="POST" enctype="multipart/form-data"
+                      action="{% url 'osaps_typesetting_upload_galley' article.pk %}">
+                    {% csrf_token %}
+                    {{ galley_form|foundation }}
+                    <button type="submit" class="button success">
+                        <i class="fa fa-upload">&nbsp;</i>Upload as Galley
+                    </button>
+                </form>
+            {% endif %}
+
+            <p>
+                An HTML galley needs its figures and any stylesheet attached
+                before it can be published. Use <strong>Edit</strong> to attach
+                them &mdash; a galley showing <em>Missing figures</em> is not
+                finished.
+            </p>
+            <table class="small">
+                <thead>
+                    <tr>
+                        <th>Label</th>
+                        <th>Type</th>
+                        <th>Filename</th>
+                        <th>Figures</th>
+                        <th>Edit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for galley in galleys %}
+                    <tr>
+                        <td>{{ galley.label }}</td>
+                        <td>{{ galley.type }}</td>
+                        <td>{{ galley.file.original_filename|truncatechars:40 }}</td>
+                        <td>
+                            {% if galley.has_missing_image_files %}
+                                <span class="label alert">Missing figures</span>
+                            {% else %}
+                                &mdash;
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'osaps_typesetting_edit_galley' article.pk galley.pk %}"
+                               aria-label="Edit galley {{ galley.label }}">
+                                <i class="fa fa-edit">&nbsp;</i>Edit
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5">You have not uploaded any galleys yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if not assignment.completed and not assignment.cancelled %}
+    <div class="box">
+        <div class="title-area">
+            <h2>Step 4 &mdash; Hand the work back</h2>
+        </div>
+        <div class="content">
+            <p>
+                Tell the editor you are finished. You can add a note about
+                anything they should know &mdash; conversion problems, choices you
+                made, or figures that need checking.
+            </p>
+            <form method="POST">
+                {% csrf_token %}
+                {{ complete_form|foundation }}
+                <button type="submit" name="complete" class="button success">
+                    Mark Task Complete
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="large-4 columns">
+    <div class="box">
+        <div class="title-area">
+            <h2>About this article</h2>
+        </div>
+        <div class="content">
+            <dl>
+                <dt>Section</dt>
+                <dd>{{ article.section.name|default:"Not set" }}</dd>
+                <dt>Author</dt>
+                <dd>{{ article.correspondence_author.full_name|default:"Not set" }}</dd>
+                <dt>Abstract</dt>
+                <dd>{{ article.abstract|striptags|truncatewords:60|default:"No abstract" }}</dd>
+            </dl>
+        </div>
+    </div>
+
+    <div class="box">
+        <div class="title-area">
+            <h2>What is OS-APS?</h2>
+        </div>
+        <div class="content">
+            <p>
+                OS-APS converts Word manuscripts to structured HTML and exports
+                PDF, HTML, JATS XML and EPUB. You check and correct the
+                conversion in its editor before exporting.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock body %}

@@ -1,0 +1,9 @@
+{% if not assignment %}
+    <span class="label secondary">Not assigned</span>
+{% elif assignment.cancelled %}
+    <span class="label alert">Cancelled</span>
+{% elif assignment.completed %}
+    <span class="label success">Typesetter finished</span>
+{% else %}
+    <span class="label warning">With typesetter</span>
+{% endif %}
