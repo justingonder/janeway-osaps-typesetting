@@ -172,17 +172,36 @@ the prefix is `/plugins/os-aps-typesetting/`.
 
 ## Journal-level settings (install/settings.json)
 
+`utils.install.update_settings()` requires the nested shape used by
+`utils/install/journal_defaults.json`; a flat `{"name": …, "types": …}` object
+raises `KeyError` on `item["group"]`. The type is `char`, which
+`core.forms.GeneratedSettingForm` renders as a `TextInput` — `text` would give a
+`Textarea` and `rich-text` a WYSIWYG box, neither of which suits a single URL.
+Janeway's own URL settings (`publisher_url`, `privacy_policy_url`,
+`external_newsletter_signup_url`) all use `char`.
+
 ```json
 [
   {
-    "name": "osaps_instance_url",
-    "default_value": "https://os-aps.sciflow.net/start",
-    "pretty_name": "OS-APS Instance URL",
-    "description": "URL of the OS-APS instance typesetters will use. Use the public demo or your self-hosted instance.",
-    "types": "rich-text"
+    "group": {
+      "name": "osaps_typesetting"
+    },
+    "setting": {
+      "name": "osaps_instance_url",
+      "pretty_name": "OS-APS Instance URL",
+      "description": "URL of the OS-APS instance typesetters will use. Use the public demo or your self-hosted instance.",
+      "type": "char",
+      "is_translatable": false
+    },
+    "value": {
+      "default": "https://os-aps.sciflow.net/start"
+    }
   }
 ]
 ```
+
+`editable_by` is omitted, so `update_settings()` applies its default of
+`["editor", "journal-manager"]`.
 
 ## Completing the stage
 

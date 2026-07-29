@@ -21,6 +21,9 @@ DASHBOARD_TEMPLATE = "osaps_typesetting/elements/dashboard.html"
 
 SETTINGS_PATH = "plugins/osaps_typesetting/install/settings.json"
 
+# Must match the group name in install/settings.json.
+SETTING_GROUP_NAME = "osaps_typesetting"
+
 
 class OSAPSTypesettingPlugin(plugins.Plugin):
     plugin_name = PLUGIN_NAME

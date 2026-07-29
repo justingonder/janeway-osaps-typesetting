@@ -48,4 +48,9 @@ urlpatterns = [
         views.download_file,
         name="osaps_typesetting_download_file",
     ),
+    re_path(
+        r"^manager/$",
+        views.manager,
+        name="osaps_typesetting_manager",
+    ),
 ]

@@ -1,0 +1,88 @@
+{% extends "admin/core/base.html" %}
+{% load foundation %}
+
+{% block title %}OS-APS Typesetting Settings{% endblock %}
+{% block title-section %}OS-APS Typesetting{% endblock %}
+{% block title-sub %}Plugin settings for {{ request.journal.name }}{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'core_plugin_list' %}">Plugins</a></li>
+    <li>OS-APS Typesetting</li>
+{% endblock breadcrumbs %}
+
+{% block body %}
+<div class="large-8 columns">
+    <form method="POST">
+        {% include "elements/forms/errors.html" %}
+        {% csrf_token %}
+        <div class="box">
+            <div class="title-area">
+                <h2>Settings</h2>
+            </div>
+            <div class="content">
+                {% if form.fields %}
+                    <p>
+                        Typesetters working on this journal are sent to this OS-APS
+                        instance from their task page. Use the public demo instance
+                        or, if your organisation runs its own, your own URL.
+                    </p>
+                    {{ form|foundation }}
+                    <button type="submit" class="button success">Save Settings</button>
+                {% else %}
+                    <div class="callout warning">
+                        You do not have permission to edit this plugin's settings.
+                        They are editable by editors and journal managers.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="large-4 columns">
+    <div class="box">
+        <div class="title-area">
+            <h2>Current instance</h2>
+        </div>
+        <div class="content">
+            {% if osaps_instance_url %}
+                <p>
+                    <a href="{{ osaps_instance_url }}" target="_blank"
+                       rel="noopener noreferrer">{{ osaps_instance_url }}</a>
+                </p>
+                <p class="help-text">
+                    Opens in a new tab. Check the link works before asking a
+                    typesetter to use it.
+                </p>
+            {% else %}
+                <div class="callout alert">
+                    No OS-APS instance is configured, so typesetters have no link
+                    to work from. Set one above.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="box">
+        <div class="title-area">
+            <h2>About this plugin</h2>
+        </div>
+        <div class="content">
+            <p>
+                OS-APS Typesetting replaces Janeway's built-in Typesetting stage
+                with one built around the OS-APS publishing suite. Typesetters
+                download the manuscript, convert and correct it in OS-APS, then
+                upload the exported PDF or HTML back here as galleys.
+            </p>
+            <p>
+                Add it to a journal's workflow from the
+                <a href="{% url 'core_journal_workflow' %}">workflow settings</a>, then
+                manage articles from
+                <a href="{% url 'osaps_typesetting_articles' %}">Articles in
+                OS-APS Typesetting</a>.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock body %}

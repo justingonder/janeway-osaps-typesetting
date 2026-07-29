@@ -3,14 +3,13 @@
 Running notes for future work sessions. `SPEC.md` is the design record; this file
 is the "things we learned while building it" record. Add to it as you go.
 
-Last updated: 28 July 2026.
+Last updated: 29 July 2026.
 
 ## Start here next session
 
-Steps 1–8 of the build order are done and verified. Remaining: **Step 9**
-(dashboard article counts), **Step 10** (manager view and the OS-APS instance
-URL setting, including changing its type from `rich-text` to `text`), and
-**Step 11** (end-to-end test, plus the plugin's first `tests.py`).
+Steps 1–8 and 10 of the build order are done and verified. Remaining:
+**Step 9** (dashboard article counts) and **Step 11** (end-to-end test, plus
+the plugin's first `tests.py`).
 
 Before anything else: `make command CMD="check"` from the repo root, and
 remember that installing or re-registering the plugin needs a server restart.
@@ -44,7 +43,7 @@ Build order is in `SPEC.md`. Steps 1–4 are done:
    editor and a typesetter-only account (current ones are placeholders)
 9. 🟡 Kanban card + dashboard widget — minimal versions exist (had to be pulled
    forward, see below); no article counts yet
-10. ⬜ Manager view + OS-APS instance URL setting
+10. ✅ Manager view + OS-APS instance URL setting — verified 29 July 2026
 11. ⬜ End-to-end test in local Janeway
 
 ## Environment gotchas
@@ -85,15 +84,16 @@ local virtualenv on this machine.
 
 ## Version control
 
-`src/plugins/*` is in the repo's `.gitignore` (line 83, no negation), so **none
-of this plugin is tracked by the Janeway git repo**. `git status` shows a clean
-tree no matter what you change here. This is normal for Janeway — plugins live in
-their own repositories.
+`src/plugins/*` is in the Janeway repo's `.gitignore` (line 83, no negation), so
+**none of this plugin is tracked by the Janeway git repo**. `git status` run from
+the Janeway root shows a clean tree no matter what you change here. This is
+normal for Janeway — plugins live in their own repositories.
 
-Plan of record: move the plugin to its own repo once Phase 1 is tested and we are
-happy with it. Until then, be aware that nothing here is backed up by git and
-there is no history to fall back on. The CDL two-developer review needs the
-plugin in its own repo.
+**As of 29 July 2026 this directory is its own git repository**, on branch
+`main`, with steps 1–8 as the initial commit. Run `git` commands from inside the
+plugin directory and they apply to the plugin; run them from the Janeway root and
+they apply to Janeway. There is no remote yet — pushing somewhere CDL can see it
+is a prerequisite for the two-developer review.
 
 ## Decisions made while building
 
@@ -192,9 +192,6 @@ Rules for any script that touches the dev database:
 - **There is no accept/decline step.** `OSAPSAssignment.accepted` is never set;
   the typesetter just starts work. Core asks the typesetter to accept first.
 
-- **Setting type for `osaps_instance_url` is `rich-text`** (from the spec). That
-  renders a WYSIWYG editor for what is a single URL. `text` is probably the right
-  type. Revisit at Step 10 when the manager view is built.
 - **The dashboard widget shows no article count.** The core typesetting widget
   uses custom template tags (`typesetting_tasks_count` and friends in
   `typesetting/templatetags/`) to show "There are N articles in Typesetting".
@@ -266,6 +263,49 @@ porting real checks if journals start completing articles with nothing attached.
 `manager` and `typesetting_round` as constructor kwargs; `save()` applies the
 round always and the manager only when the assignment does not already have one,
 so editing an assignment does not steal ownership from whoever created it.
+
+## Settings and the manager view (Step 10)
+
+**The setting type is `char`, not `text`.** `core.forms.GeneratedSettingForm`
+maps `char` → `TextInput`, `text` → `Textarea` and `rich-text` → a WYSIWYG box.
+Every URL setting in `utils/install/journal_defaults.json` (`publisher_url`,
+`privacy_policy_url`, `external_newsletter_signup_url`) is `char`, so a single
+URL wants `char`. The earlier note here guessing `text` was wrong.
+
+**`update_settings()` does update an existing `Setting` row's metadata.**
+`utils/install.py:58-62` compares `types`, `pretty_name`, `description` and
+`is_translatable` against the JSON and saves any that differ, so changing the
+type in `install/settings.json` and re-running `install_plugins` is enough — no
+hand-editing of the database. Existing **values** are left alone: the value is
+only written when the `SettingValue` is created, or when
+`overwrite_with_defaults=True`.
+
+**`editable_by` is only written when the `SettingValue` is created**
+(`utils/install.py:78-89`), inside the same branch as the default value. Ours was
+populated on the first install, with the default `["editor", "journal-manager"]`
+because the JSON omits the key. Verified 29 July 2026: a non-staff editor and a
+journal-manager both pass, a typesetter does not. If you ever need to change
+`editable_by` on an existing setting, re-running `install_plugins` will **not**
+do it.
+
+**`core.logic.user_can_edit_setting` takes a `SettingValue`, not a `Setting`.**
+It reads `.editable_by`, which on `SettingValue` is a property returning a set of
+role slugs (`core/models.py:1231`); on `Setting` it is the M2M manager, and
+passing one raises `TypeError: 'ManyRelatedManager' object is not iterable`.
+`logic.get_settings_to_edit()` passes the `SettingValue` returned by
+`setting_handler.get_setting`, matching `core.logic.get_settings_to_edit`.
+
+**The manager view takes no arguments.** `core/views.py:2184` does
+`reverse(manager_url)` with no args when building the plugin manager page, so
+`MANAGER_URL` must resolve without them. Before this step the name existed in
+`plugin_settings.py` with no URL behind it, and the plugin was quietly listed
+under "failed to load" on `/manager/plugins/`. It now appears in the normal list.
+
+**We deliberately do not call `clear_cache()` after saving.** Core's settings
+views do (`core/views.py:2028`), but `utils.shared.clear_cache` is
+`cache.clear()` — it wipes the entire Django cache for every journal in the
+install. `setting_handler` does no caching of its own and the instance URL is
+read fresh on each request, so there is nothing stale to clear.
 
 ## Standing constraints (from CDL code review)
 

@@ -7,7 +7,11 @@ from django.db.models import Q
 from django.shortcuts import redirect, reverse
 from django.utils import timezone
 
-from core import files as core_files, models as core_models
+from core import (
+    files as core_files,
+    logic as core_logic,
+    models as core_models,
+)
 from events import logic as event_logic
 from plugins.osaps_typesetting import models, plugin_settings
 from production import logic as production_logic
@@ -102,12 +106,45 @@ def get_osaps_instance_url(journal):
     :return: string
     """
     setting = setting_handler.get_setting(
-        "osaps_typesetting",
+        plugin_settings.SETTING_GROUP_NAME,
         "osaps_instance_url",
         journal,
     )
 
     return setting.processed_value if setting else ""
+
+
+def get_settings_to_edit(journal, user):
+    """
+    The plugin's journal settings in the shape core.forms.GeneratedSettingForm
+    expects, dropping any the user is not permitted to edit. Follows
+    core.logic.get_settings_to_edit, which does the same for core's own
+    setting groups.
+    :param journal: a Journal object
+    :param user: an Account object
+    :return: (list of dicts, setting group name)
+    """
+    settings = [
+        {
+            "name": "osaps_instance_url",
+            "object": setting_handler.get_setting(
+                plugin_settings.SETTING_GROUP_NAME,
+                "osaps_instance_url",
+                journal,
+            ),
+        },
+    ]
+    editable = [
+        setting
+        for setting in settings
+        if core_logic.user_can_edit_setting(
+            setting=setting["object"],
+            user=user,
+            journal=journal,
+        )
+    ]
+
+    return editable, plugin_settings.SETTING_GROUP_NAME
 
 
 def create_galley_from_upload(article, request, uploaded_file, label=None, public=True):

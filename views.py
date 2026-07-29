@@ -4,7 +4,7 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render, reverse
 from django.views.decorators.http import require_POST
 
-from core import files, models as core_models
+from core import files, forms as core_forms, models as core_models
 from plugins.osaps_typesetting import (
     forms,
     logic,
@@ -529,3 +529,43 @@ def upload_galley(request, article_id):
             kwargs={"article_id": article_object.pk},
         )
     )
+
+
+@decorators.has_journal
+@decorators.editor_user_required
+def manager(request):
+    """
+    The plugin's settings page, reached from Janeway's plugin manager. Sets
+    the OS-APS instance typesetters are sent to for this journal.
+
+    Janeway reverses MANAGER_URL with no arguments (core/views.py:2184), so
+    this view takes none; the journal comes from the request.
+    :param request: HttpRequest object
+    :return: HttpResponse object
+    """
+    settings, setting_group = logic.get_settings_to_edit(
+        request.journal,
+        request.user,
+    )
+    form = core_forms.GeneratedSettingForm(settings=settings)
+
+    if request.POST:
+        form = core_forms.GeneratedSettingForm(request.POST, settings=settings)
+
+        if form.is_valid():
+            form.save(journal=request.journal, group=setting_group)
+            messages.add_message(
+                request,
+                messages.SUCCESS,
+                "OS-APS Typesetting settings saved.",
+            )
+
+            return redirect(reverse("osaps_typesetting_manager"))
+
+    template = "osaps_typesetting/manager.html"
+    context = {
+        "form": form,
+        "osaps_instance_url": logic.get_osaps_instance_url(request.journal),
+    }
+
+    return render(request, template, context)

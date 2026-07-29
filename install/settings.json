@@ -7,7 +7,7 @@
       "name": "osaps_instance_url",
       "pretty_name": "OS-APS Instance URL",
       "description": "URL of the OS-APS instance typesetters will use. Use the public demo or your self-hosted instance.",
-      "type": "rich-text",
+      "type": "char",
       "is_translatable": false
     },
     "value": {
