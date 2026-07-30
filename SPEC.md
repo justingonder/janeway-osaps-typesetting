@@ -1,5 +1,11 @@
 # OS-APS Typesetting Plugin — Architecture Spec
 
+This is the design record: what was decided before and during the build, and the
+roadmap beyond Phase 1. `HANDOFFS.md` is the record of what was learned building
+it, including where the implementation deviates from this document and why. Where
+the two disagree about how the code behaves today, `HANDOFFS.md` is the more
+current.
+
 ## What this plugin does
 
 A Janeway workflow plugin that replaces the built-in Typesetting stage with one that integrates the Open Source Academic Publishing Suite (OS-APS / SciFlow editor) into the typesetting workflow.
@@ -8,9 +14,10 @@ A Janeway workflow plugin that replaces the built-in Typesetting stage with one 
 
 ## Integration roadmap
 
-This plugin is designed in three phases. Only Phase 1 is being built now, but every decision must leave Phases 2 and 3 open.
+This plugin is designed in three phases. Phase 1 is built; every decision in it
+was made so as to leave Phases 2 and 3 open.
 
-### Phase 1 — Manual handoff (MVP, building now)
+### Phase 1 — Manual handoff (built)
 Janeway plugin shows files-for-typesetting. Typesetter downloads the DOCX, opens OS-APS in a new tab, works there, exports PDF/HTML, uploads outputs back to Janeway as galleys. No API required.
 
 ### Phase 2 — Embedded editor
@@ -42,31 +49,47 @@ DASHBOARD_TEMPLATE = "osaps_typesetting/elements/dashboard.html"
 
 ## Directory structure
 
+In an install, the plugin sits in Janeway's plugin directory. The directory name
+is the Django app label and must be exactly `osaps_typesetting`. In this git
+repository the same files sit at the repository root, alongside `README.md`,
+`LICENSE`, `SPEC.md`, `HANDOFFS.md` and `.gitignore`, so a clone drops straight
+into place.
+
 ```
 src/plugins/osaps_typesetting/
+├── __init__.py
 ├── plugin_settings.py
 ├── models.py
 ├── views.py
 ├── urls.py
 ├── forms.py
 ├── logic.py
+├── security.py               # the plugin's two access decorators
 ├── admin.py
-├── migrations/
-│   └── __init__.py
-├── install/
-│   └── settings.json         # Journal-level setting: osaps_instance_url
 ├── tests.py
-├── test_urls.py              # Mounts the plugin's URLs for tests; see its docstring
+├── test_urls.py              # mounts the plugin's URLs for tests; see its docstring
+├── migrations/
+│   ├── __init__.py
+│   └── 0001_initial.py
+├── install/
+│   └── settings.json         # journal-level setting: osaps_instance_url
 ├── templatetags/
-│   └── osaps_typesetting_tags.py   # Counts for the dashboard and kanban card
+│   ├── __init__.py
+│   └── osaps_typesetting_tags.py   # counts for the dashboard and kanban card
 └── templates/osaps_typesetting/
-    ├── articles.html          # Handshake URL — list of articles in this stage
-    ├── article.html           # Jump URL — main management view
-    ├── assignment.html        # Typesetter's task view
-    ├── manager.html           # Plugin settings/manager view
+    ├── articles.html         # handshake URL — list of articles in this stage
+    ├── article.html          # jump URL — main management view
+    ├── assign.html           # assign a typesetter, or edit the assignment
+    ├── assignments.html      # a typesetter's own task list
+    ├── assignment.html       # typesetter's task view
+    ├── edit_galley.html      # replace a galley, attach figures and a stylesheet
+    ├── manager.html          # plugin settings/manager view
     └── elements/
-        ├── card.html          # Kanban card
-        └── dashboard.html     # Dashboard widget
+        ├── breadcrumbs.html
+        ├── card.html         # kanban card
+        ├── dashboard.html    # dashboard widget
+        ├── status.html       # assignment status label, used by four pages
+        └── title_sub.html
 ```
 
 ## Models
@@ -158,21 +181,31 @@ the prefix is `/plugins/os-aps-typesetting/`.
 | `osaps_typesetting_assignment` | `/plugins/os-aps-typesetting/assignment/<id>/` | Typesetter task view |
 | `osaps_typesetting_download_file` | `/plugins/os-aps-typesetting/assignment/<id>/file/<id>/` | Serve an assignment file to the typesetter |
 | `osaps_typesetting_upload_galley` | `/plugins/os-aps-typesetting/article/<id>/galley/upload/` | Upload exported file as galley |
+| `osaps_typesetting_edit_galley` | `/plugins/os-aps-typesetting/article/<id>/galley/<id>/edit/` | Replace a galley, attach the figures an HTML galley references, attach a stylesheet |
 | `osaps_typesetting_complete` | `/plugins/os-aps-typesetting/article/<id>/complete/` | Complete stage, advance workflow |
 | `osaps_typesetting_manager` | `/plugins/os-aps-typesetting/manager/` | Plugin settings (OS-APS instance URL) |
 
 ## Phase 1 typesetter workflow
 
-1. Manager assigns typesetter via `osaps_typesetting_assign`
-2. Typesetter sees their task at `osaps_typesetting_assignment`:
+Opening the jump view on an article opens round 1 automatically, so work can
+begin without anything having been assigned.
+
+1. **Optionally**, a manager assigns a typesetter via `osaps_typesetting_assign`.
+   Assignment is optional throughout: many journals have no dedicated typesetter,
+   and an editor may open the stage and do the work themselves. Nothing below
+   requires an assignment to exist.
+2. An assigned typesetter finds their work at `osaps_typesetting_assignments` and
+   opens the task at `osaps_typesetting_assignment`:
    - Files for typesetting listed with download buttons
    - "Open OS-APS" button linking to configured OS-APS instance (from journal setting `osaps_instance_url`)
    - Standard `<input type="file">` upload form for importing outputs back as galleys
    - **No custom JavaScript** — standard HTML form POST only (CDL code review requirement)
-3. Typesetter uploads exported PDF/HTML; plugin calls `production.logic.save_galley()`
-   and adds the galley to `assignment.galleys_created`
+3. The exported PDF/HTML is uploaded; the plugin calls
+   `production.logic.save_galley()` and, when the upload came from an assignment,
+   adds the galley to `assignment.galleys_created`. An HTML galley is not
+   publishable until its figures are attached at `osaps_typesetting_edit_galley`.
 4. Manager reviews galleys at `osaps_typesetting_article` and clicks Complete
-5. `logic.complete_assignment()` fires `ON_WORKFLOW_ELEMENT_COMPLETE` to advance the workflow
+5. `logic.complete_stage()` fires `ON_WORKFLOW_ELEMENT_COMPLETE` to advance the workflow
 
 ## Journal-level settings (install/settings.json)
 
@@ -209,21 +242,44 @@ Janeway's own URL settings (`publisher_url`, `privacy_policy_url`,
 
 ## Completing the stage
 
+Originally specified as `complete_assignment(assignment, request)`. It is
+implemented as `complete_stage(article, request)`, keyed on the article rather
+than the assignment, because an article can reach completion with no assignment
+at all — see the workflow above. Any open assignment is closed on the way through.
+
 ```python
 # logic.py
 from events import logic as event_logic
 
-def complete_assignment(assignment, request):
-    assignment.completed = timezone.now()
-    assignment.save()
-    event_logic.Events.raise_event(
+def complete_stage(article, request):
+    current_round = get_current_round(article)
+    assignment = get_assignment(current_round)
+
+    if assignment and not assignment.completed and not assignment.cancelled:
+        assignment.completed = timezone.now()
+        assignment.save()
+
+    # Without this guard a journal that has removed the element gets an
+    # unhandled failure rather than a warning. Follows typesetting/logic.py.
+    if not request.journal.element_in_workflow(
+        element_name=plugin_settings.PLUGIN_NAME,
+    ):
+        messages.add_message(request, messages.WARNING, "...")
+        return redirect(reverse("core_dashboard"))
+
+    return event_logic.Events.raise_event(
         event_logic.Events.ON_WORKFLOW_ELEMENT_COMPLETE,
-        handshake_url='osaps_typesetting_articles',
+        task_object=article,
+        handshake_url=plugin_settings.HANDSHAKE_URL,
         request=request,
-        article=assignment.round.article,
+        article=article,
         switch_stage=True,
     )
 ```
+
+Completing the typesetter's *task* is a separate, smaller action —
+`logic.complete_typesetter_task()` — which hands the work back to the editor
+without advancing the stage.
 
 ## Galley creation
 
@@ -232,19 +288,25 @@ Use `production.logic.save_galley()` — do not re-implement file saving logic.
 ```python
 from production import logic as production_logic
 
-def create_galley_from_upload(article, request, uploaded_file):
-    galley = production_logic.save_galley(
+def create_galley_from_upload(article, request, uploaded_file, label=None, public=True):
+    return production_logic.save_galley(
         article=article,
         request=request,
         uploaded_file=uploaded_file,
         is_galley=True,
+        label=label,
+        public=public,
     )
-    return galley
 ```
+
+Janeway derives a label from the file type when none is given. After an HTML
+galley is saved or replaced, `logic.rewrite_remote_image_sources()` rewrites the
+absolute OS-APS asset URLs in its markup to local filenames; see `HANDOFFS.md`
+for why that is necessary and what it does not do.
 
 ## What NOT to do
 
-- Do not write custom JavaScript (CDL code review requirement — Janeway maintainers will not accept it)
+- Do not write custom JavaScript
 - Do not import models from src/typesetting/ 
 - Do not use null=True on CharField or TextField
 - Do not modify auto-generated migrations
