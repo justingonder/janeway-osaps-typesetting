@@ -4,12 +4,16 @@
 {% user_has_role request 'editor' as editor %}
 {% user_has_role request 'production' as production %}
 
-{# staff_override=False, unlike the two above: staff match every role, which
-   would put "You have 0 OS-APS Typesetting tasks" on every editor's dashboard.
-   The task list admits role holders and staff (security.decorators
-   .typesetter_user_required), so show the button to typesetters always -- it is
-   their page even when empty -- and to staff only when they have work. `and`
-   binds tighter than `or` in Django templates. #}
+{% comment %}
+    staff_override=False, unlike the two above: staff match every role, which
+    would put a task count on every editor's dashboard. The task list admits
+    role holders and staff (security.decorators.typesetter_user_required), so
+    show the button to typesetters always -- it is their page even when empty --
+    and to staff only when they have work. `and` binds tighter than `or` in
+    Django templates.
+
+    {# #} is single-line only: a multi-line one renders as visible text.
+{% endcomment %}
 {% user_has_role request 'typesetter' staff_override=False as typesetter %}
 {% osaps_open_task_count as num_open_tasks %}
 

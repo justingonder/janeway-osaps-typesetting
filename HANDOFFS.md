@@ -7,8 +7,18 @@ Last updated: 29 July 2026.
 
 ## Start here next session
 
-Steps 1–10 of the build order are done and verified. All that remains is
-**Step 11** (end-to-end test, plus the plugin's first `tests.py`).
+**Phase 1 is complete.** All eleven steps of the build order are done, and
+`tests.py` holds 90 passing tests:
+
+```
+DB_VENDOR=sqlite make command CMD="test plugins.osaps_typesetting.tests"
+```
+
+Note the module path — `test plugins.osaps_typesetting` fails, see below.
+
+What is left is not building but shipping: give the plugin a remote, get the two
+CDL reviews, and decide on the deferred items under "Open questions" (notifications,
+an accept/decline step, pre-completion checks, galley delete).
 
 Before anything else: `make command CMD="check"` from the repo root, and
 remember that installing or re-registering the plugin needs a server restart.
@@ -43,7 +53,8 @@ Build order is in `SPEC.md`. Steps 1–4 are done:
 9. ✅ Kanban card + dashboard widget — minimal versions had to be pulled forward
    early (see below); counts added and verified 29 July 2026
 10. ✅ Manager view + OS-APS instance URL setting — verified 29 July 2026
-11. ⬜ End-to-end test in local Janeway
+11. ✅ `tests.py` (90 tests) + end-to-end smoke check of the real install,
+    29 July 2026
 
 ## Environment gotchas
 
@@ -262,6 +273,48 @@ porting real checks if journals start completing articles with nothing attached.
 round always and the manager only when the assignment does not already have one,
 so editing an assignment does not steal ownership from whoever created it.
 
+## Testing a plugin (Step 11)
+
+Four things about the test environment cost real time; none are obvious.
+
+**`test plugins.osaps_typesetting` does not work.** `src/plugins/` has no
+`__init__.py`, so it is a namespace package, and unittest's directory discovery
+does `os.path.abspath(module.__file__)` on it and dies with
+`TypeError: expected str, bytes or os.PathLike object, not NoneType`. Name the
+module: `test plugins.osaps_typesetting.tests`.
+
+**Plugin URLs are not registered under the test runner.** `core/include_urls.py`
+mounts a plugin only if an enabled `Plugin` row exists *when that module is
+imported*, and the test database is created empty, so every plugin view name —
+and every redirect inside the views — raises `NoReverseMatch`. `test_urls.py`
+solves it by mounting the plugin alongside core's patterns, and the tests set
+`ROOT_URLCONF` to it. Build that module on **`core.urls`**, not
+`core.include_urls`: `core.urls` is the real ROOT_URLCONF and adds the admin,
+summernote, hijack and — under `settings.IN_TEST_RUNNER` — the debug toolbar,
+whose middleware otherwise fails to reverse its own `djdt` namespace while
+rendering any page. That one mistake accounted for 27 of the first run's errors.
+
+**Never put a `Mock` in a template context.** Django's template variable
+resolution calls anything callable it resolves, and a `Mock` is callable, so
+`{{ request.user.is_staff }}` silently becomes an auto-created attribute of
+`request()` — a truthy `Mock`. Every role check passes, for every user, and the
+tests "pass" while asserting nothing. `typesetting/tests.py`'s
+`prepare_request_with_user` is fine for security decorators, which only touch the
+request from plain Python, but not for rendering. Use
+`utils.testing.helpers.get_request()`, which returns a real `HttpRequest`.
+`OSAPSTestCase` offers both, `mock_request` and `template_request`.
+
+**Test file writes land in the development tree.** `File.self_article_path()` is
+`settings.BASE_DIR/files/articles/<pk>/`, and article pks in the test database
+start at 1 — the same directory as development article 1. Tests that write real
+bytes override `BASE_DIR` to a temporary directory. Do it per test method, not on
+the class: `plugin_settings.install()` resolves `install/settings.json` relative
+to `BASE_DIR` and would not find it.
+
+Also worth knowing: `make check` runs the whole Janeway suite (`make test` is not
+a target), and **ruff cannot be run in this container** — it segfaults under qemu
+on an arm64 host, and there is no host install.
+
 ## Dashboard and kanban counts (Step 9)
 
 **Elements get almost no context, so counts have to come from tags.**
@@ -289,6 +342,20 @@ page even when empty) and to staff only when they actually have work. The
 condition is `typesetter or request.user.is_staff and num_open_tasks`; `and` binds
 tighter than `or` in Django templates, and all six input combinations were
 verified on 29 July 2026. This deliberately deviates from core.
+
+**`{# … #}` is single-line only.** The Step 9 dashboard widget shipped with a
+six-line `{#` comment explaining the `staff_override` decision. Django's
+tokenizer matches comments with `{#.*?#}` and no `re.DOTALL`, so a multi-line one
+never matches and the whole block renders as **visible text on the dashboard**.
+Fixed 29 July 2026 by switching to `{% comment %}`, and caught by `tests.py`
+rather than by eye — the manual Step 9 check extracted only the markup inside the
+widget's box, and the comment sat just outside it. Use `{% comment %}` for
+anything longer than one line.
+
+Related trap when asserting on page content: under `DEBUG` the django debug
+toolbar embeds template **source**, including this plugin's, into every page as
+JSON for its template panel. Scanning a whole page for `{%` finds that payload,
+not a rendering fault. Scope such assertions to the plugin's own markup.
 
 **`article.osapsround_set.first.osapsassignment` is safe in a template even with
 no assignment.** The reverse one-to-one raises `ObjectDoesNotExist`, which sets

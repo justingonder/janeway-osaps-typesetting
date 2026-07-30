@@ -55,6 +55,8 @@ src/plugins/osaps_typesetting/
 │   └── __init__.py
 ├── install/
 │   └── settings.json         # Journal-level setting: osaps_instance_url
+├── tests.py
+├── test_urls.py              # Mounts the plugin's URLs for tests; see its docstring
 ├── templatetags/
 │   └── osaps_typesetting_tags.py   # Counts for the dashboard and kanban card
 └── templates/osaps_typesetting/
@@ -260,4 +262,8 @@ def create_galley_from_upload(article, request, uploaded_file):
 8. Templates for all views
 9. Kanban card + dashboard widget
 10. Manager view + OS-APS instance URL setting
-11. Test end-to-end in local Janeway
+11. Test end-to-end in local Janeway, and write `tests.py`
+
+All eleven steps are complete as of 29 July 2026. `HANDOFFS.md` records what was
+learned building each one, including where the implementation deviates from this
+spec and why.
