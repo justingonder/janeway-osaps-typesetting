@@ -98,6 +98,39 @@ def articles_in_stage(journal):
     return rows
 
 
+def articles_in_stage_count(journal):
+    """
+    How many of a journal's articles are in the OS-APS typesetting stage.
+    Counted in the database rather than by len(articles_in_stage()), which
+    walks every article's rounds and galleys.
+    :param journal: a Journal object
+    :return: int
+    """
+    return submission_models.Article.objects.filter(
+        journal=journal,
+        stage=plugin_settings.STAGE,
+    ).count()
+
+
+def open_assignment_count(user, journal):
+    """
+    How many OS-APS typesetting tasks a user has open on a journal. Matches
+    the "active" list in views.assignments.
+    :param user: an Account object
+    :param journal: a Journal object
+    :return: int
+    """
+    if not user or not user.is_authenticated:
+        return 0
+
+    return models.OSAPSAssignment.objects.filter(
+        typesetter=user,
+        round__article__journal=journal,
+        completed__isnull=True,
+        cancelled__isnull=True,
+    ).count()
+
+
 def get_osaps_instance_url(journal):
     """
     Returns the configured OS-APS instance URL for a journal, falling back to

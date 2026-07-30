@@ -1,10 +1,23 @@
 {% load roles %}
+{% load osaps_typesetting_tags %}
 
 {% user_has_role request 'editor' as editor %}
 {% user_has_role request 'production' as production %}
-{% user_has_role request 'typesetter' as typesetter %}
 
-{% if editor or production or typesetter %}
+{# staff_override=False, unlike the two above: staff match every role, which
+   would put "You have 0 OS-APS Typesetting tasks" on every editor's dashboard.
+   The task list admits role holders and staff (security.decorators
+   .typesetter_user_required), so show the button to typesetters always -- it is
+   their page even when empty -- and to staff only when they have work. `and`
+   binds tighter than `or` in Django templates. #}
+{% user_has_role request 'typesetter' staff_override=False as typesetter %}
+{% osaps_open_task_count as num_open_tasks %}
+
+{% if editor or production or typesetter or request.user.is_staff and num_open_tasks %}
+    {% if editor or production %}
+        {% osaps_articles_in_stage_count as num_articles_in_stage %}
+    {% endif %}
+
     <div class="large-4 columns end" data-equalizer-watch>
         <div class="box">
             <div class="title-area">
@@ -14,12 +27,15 @@
                 <div class="button-group stacked">
                     {% if editor or production %}
                         <a href="{% url 'osaps_typesetting_articles' %}" class="button success">
-                            Articles in OS-APS Typesetting
+                            There {% if num_articles_in_stage == 1 %}is{% else %}are{% endif %}
+                            {{ num_articles_in_stage }}
+                            article{{ num_articles_in_stage|pluralize }} in OS-APS Typesetting
                         </a>
                     {% endif %}
-                    {% if typesetter %}
+                    {% if typesetter or request.user.is_staff and num_open_tasks %}
                         <a href="{% url 'osaps_typesetting_assignments' %}" class="button alert">
-                            Your OS-APS Typesetting tasks
+                            You have {{ num_open_tasks }} OS-APS Typesetting
+                            task{{ num_open_tasks|pluralize }}
                         </a>
                     {% endif %}
                 </div>

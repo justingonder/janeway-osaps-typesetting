@@ -7,9 +7,8 @@ Last updated: 29 July 2026.
 
 ## Start here next session
 
-Steps 1–8 and 10 of the build order are done and verified. Remaining:
-**Step 9** (dashboard article counts) and **Step 11** (end-to-end test, plus
-the plugin's first `tests.py`).
+Steps 1–10 of the build order are done and verified. All that remains is
+**Step 11** (end-to-end test, plus the plugin's first `tests.py`).
 
 Before anything else: `make command CMD="check"` from the repo root, and
 remember that installing or re-registering the plugin needs a server restart.
@@ -41,8 +40,8 @@ Build order is in `SPEC.md`. Steps 1–4 are done:
    advanced `osaps_typesetting` → `pre_publication` and the fixture was restored
 8. ✅ Templates for all views — rebuilt 28 July 2026 and rendered as both an
    editor and a typesetter-only account (current ones are placeholders)
-9. 🟡 Kanban card + dashboard widget — minimal versions exist (had to be pulled
-   forward, see below); no article counts yet
+9. ✅ Kanban card + dashboard widget — minimal versions had to be pulled forward
+   early (see below); counts added and verified 29 July 2026
 10. ✅ Manager view + OS-APS instance URL setting — verified 29 July 2026
 11. ⬜ End-to-end test in local Janeway
 
@@ -192,10 +191,9 @@ Rules for any script that touches the dev database:
 - **There is no accept/decline step.** `OSAPSAssignment.accepted` is never set;
   the typesetter just starts work. Core asks the typesetter to accept first.
 
-- **The dashboard widget shows no article count.** The core typesetting widget
-  uses custom template tags (`typesetting_tasks_count` and friends in
-  `typesetting/templatetags/`) to show "There are N articles in Typesetting".
-  Ours is just a link. Add equivalent tags at Step 9 if we want the counts.
+- **Galley controls on the kanban card.** The card now shows the round number and
+  galley count, but there is no way to act on an article from the board itself.
+  Core's card does not offer that either, so this is probably fine.
 ## Local test fixture
 
 As of 28 July 2026 the dev database has article 1, "OS-APS Typesetting Test", in
@@ -263,6 +261,39 @@ porting real checks if journals start completing articles with nothing attached.
 `manager` and `typesetting_round` as constructor kwargs; `save()` applies the
 round always and the manager only when the assignment does not already have one,
 so editing an assignment does not steal ownership from whoever created it.
+
+## Dashboard and kanban counts (Step 9)
+
+**Elements get almost no context, so counts have to come from tags.**
+`templates/admin/core/dashboard.html:166-170` includes the dashboard element with
+only the ambient context, and `kanban.html:60` adds just `article`. The plugin
+therefore has a `templatetags/osaps_typesetting_tags.py` library, following
+`typesetting/templatetags/role_count.py`. The queries themselves live in
+`logic.py` (`articles_in_stage_count`, `open_assignment_count`) so they can be
+tested without rendering a template; the tags are thin wrappers.
+
+**A new `templatetags` package needs a server restart**, like any new module —
+the autoreloader only watches what has already been imported. Template *edits*
+inside it do not.
+
+**Tag names are prefixed `osaps_`.** `{% load %}` is per-template so there is no
+hard conflict, but core's `typesetting_tasks_count` and `articles_in_stage_count`
+render on the same dashboard page and the unprefixed names would be genuinely
+ambiguous to read.
+
+**`user_has_role` defaults to `staff_override=True`, which staff match for every
+role.** Core's typesetting widget takes that at face value, so every staff editor
+is told "You have 0 Typesetting tasks". Ours passes `staff_override=False` for the
+typesetter check and shows the task button to real typesetters always (it is their
+page even when empty) and to staff only when they actually have work. The
+condition is `typesetter or request.user.is_staff and num_open_tasks`; `and` binds
+tighter than `or` in Django templates, and all six input combinations were
+verified on 29 July 2026. This deliberately deviates from core.
+
+**`article.osapsround_set.first.osapsassignment` is safe in a template even with
+no assignment.** The reverse one-to-one raises `ObjectDoesNotExist`, which sets
+`silent_variable_failure = True`, so the template renders it as empty rather than
+500ing. Do not "fix" this with a `try`/`except` in a tag.
 
 ## Settings and the manager view (Step 10)
 

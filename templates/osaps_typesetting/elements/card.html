@@ -1,18 +1,31 @@
+{% load osaps_typesetting_tags %}
+
 <div class="card">
     <div class="card-divider">
         <h5>{{ article.pk }} - {{ article.safe_title }}</h5>
     </div>
     <div class="card-section">
-        {% with assignment=article.osapsround_set.first.osapsassignment %}
-            {% if assignment.typesetter %}
-                <p>
-                    With {{ assignment.typesetter.full_name }}
-                    {% if assignment.due %}&mdash; due {{ assignment.due }}{% endif %}
-                </p>
-                {% include "osaps_typesetting/elements/status.html" with assignment=assignment %}
-            {% else %}
-                <p>Awaiting a typesetter.</p>
-            {% endif %}
+        {% with current_round=article.osapsround_set.first %}
+            {% with assignment=current_round.osapsassignment %}
+                {% if assignment.typesetter %}
+                    <p>
+                        With {{ assignment.typesetter.full_name }}
+                        {% if assignment.due %}&mdash; due {{ assignment.due }}{% endif %}
+                    </p>
+                    {% include "osaps_typesetting/elements/status.html" with assignment=assignment %}
+                {% else %}
+                    <p>Awaiting a typesetter.</p>
+                {% endif %}
+            {% endwith %}
+            {% osaps_galley_count article as num_galleys %}
+            <p class="help-text">
+                {% if current_round %}Round {{ current_round.round_number }} &mdash; {% endif %}
+                {% if num_galleys %}
+                    {{ num_galleys }} galley{{ num_galleys|pluralize }}
+                {% else %}
+                    no galleys yet
+                {% endif %}
+            </p>
         {% endwith %}
         <div class="button-group">
             <a class="button tiny" href="{% url 'osaps_typesetting_article' article.pk %}">

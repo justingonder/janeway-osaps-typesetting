@@ -55,6 +55,8 @@ src/plugins/osaps_typesetting/
 │   └── __init__.py
 ├── install/
 │   └── settings.json         # Journal-level setting: osaps_instance_url
+├── templatetags/
+│   └── osaps_typesetting_tags.py   # Counts for the dashboard and kanban card
 └── templates/osaps_typesetting/
     ├── articles.html          # Handshake URL — list of articles in this stage
     ├── article.html           # Jump URL — main management view
