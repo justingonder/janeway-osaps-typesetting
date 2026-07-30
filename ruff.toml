@@ -1,0 +1,27 @@
+# Mirrors the [tool.ruff] settings in Janeway's own pyproject.toml, so this
+# plugin formats identically whether it is checked inside a Janeway checkout or
+# cloned on its own. Janeway excludes src/plugins from its configuration, and
+# ruff uses the nearest config file to each source file, so this one applies in
+# both cases.
+#
+# Janeway's pre-commit hook enforces `ruff format` only. `ruff check` reports
+# findings here -- RUF012 on Django Meta classes, UP030/UP032 on .format()
+# calls -- of exactly the kind Janeway core reports in the thousands. They are
+# house style, and matching the codebase this plugs into matters more than a
+# clean report.
+
+line-length = 88
+
+# Python only, mirroring Janeway's `include = ["src/**/*.py"]`. Without it
+# `ruff format .` also rewrites the Python samples inside SPEC.md, which are
+# illustrative and in places deliberately abridged.
+include = ["**/*.py"]
+
+# Matches Janeway rather than the 3.10 this was developed against: a plugin
+# should not require a newer Python than the platform it extends.
+target-version = "py39"
+
+[format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
