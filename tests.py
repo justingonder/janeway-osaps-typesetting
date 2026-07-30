@@ -779,7 +779,9 @@ class TestViews(OSAPSTestCase):
             response = self.client.get(self.url("osaps_typesetting_articles"))
 
             self.assertEqual(response.status_code, 200)
-            self.assertIn(self.article, [row["article"] for row in response.context["rows"]])
+            self.assertIn(
+                self.article, [row["article"] for row in response.context["rows"]]
+            )
 
     def test_articles_list_refuses_a_typesetter(self):
         self.client.force_login(self.typesetter)

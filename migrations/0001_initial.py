@@ -6,45 +6,99 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('submission', '0088_auto_20250506_1214'),
-        ('core', '0110_one_click_review_on_by_default'),
+        ("submission", "0088_auto_20250506_1214"),
+        ("core", "0110_one_click_review_on_by_default"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='OSAPSRound',
+            name="OSAPSRound",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('round_number', models.IntegerField(default=1)),
-                ('date_started', models.DateTimeField(auto_now_add=True)),
-                ('article', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='submission.article')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("round_number", models.IntegerField(default=1)),
+                ("date_started", models.DateTimeField(auto_now_add=True)),
+                (
+                    "article",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="submission.article",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['-round_number'],
+                "ordering": ["-round_number"],
             },
         ),
         migrations.CreateModel(
-            name='OSAPSAssignment',
+            name="OSAPSAssignment",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('assigned', models.DateTimeField(auto_now_add=True)),
-                ('accepted', models.DateTimeField(blank=True, null=True)),
-                ('due', models.DateField(blank=True, null=True)),
-                ('completed', models.DateTimeField(blank=True, null=True)),
-                ('cancelled', models.DateTimeField(blank=True, null=True)),
-                ('osaps_project_url', models.URLField(blank=True)),
-                ('task', models.TextField(blank=True)),
-                ('typesetter_note', models.TextField(blank=True)),
-                ('files_to_typeset', models.ManyToManyField(blank=True, related_name='osaps_assignments', to='core.file')),
-                ('galleys_created', models.ManyToManyField(blank=True, related_name='osaps_assignments', to='core.galley')),
-                ('manager', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='osaps_managed_assignments', to=settings.AUTH_USER_MODEL)),
-                ('round', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, to='osaps_typesetting.osapsround')),
-                ('typesetter', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='osaps_typesetting_assignments', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("assigned", models.DateTimeField(auto_now_add=True)),
+                ("accepted", models.DateTimeField(blank=True, null=True)),
+                ("due", models.DateField(blank=True, null=True)),
+                ("completed", models.DateTimeField(blank=True, null=True)),
+                ("cancelled", models.DateTimeField(blank=True, null=True)),
+                ("osaps_project_url", models.URLField(blank=True)),
+                ("task", models.TextField(blank=True)),
+                ("typesetter_note", models.TextField(blank=True)),
+                (
+                    "files_to_typeset",
+                    models.ManyToManyField(
+                        blank=True, related_name="osaps_assignments", to="core.file"
+                    ),
+                ),
+                (
+                    "galleys_created",
+                    models.ManyToManyField(
+                        blank=True, related_name="osaps_assignments", to="core.galley"
+                    ),
+                ),
+                (
+                    "manager",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="osaps_managed_assignments",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "round",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="osaps_typesetting.osapsround",
+                    ),
+                ),
+                (
+                    "typesetter",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="osaps_typesetting_assignments",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
     ]
