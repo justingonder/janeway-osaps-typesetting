@@ -1,6 +1,6 @@
 # OS-APS Typesetting
 
-A [Janeway](https://github.com/BirkbeckCTP/janeway) workflow plugin that replaces
+A [Janeway](https://github.com/openlibhums/janeway) workflow plugin that replaces
 the built-in Typesetting stage with one built around the
 [Open Source Academic Publishing Suite](https://os-aps.de) (OS-APS / SciFlow).
 
