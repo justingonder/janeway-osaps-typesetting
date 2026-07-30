@@ -3,31 +3,28 @@
 Running notes for future work sessions. `SPEC.md` is the design record; this file
 is the "things we learned while building it" record. Add to it as you go.
 
-Last updated: 29 July 2026.
+Last updated: 30 July 2026.
 
-## Start here next session
+## Status
 
-**Phase 1 is complete.** All eleven steps of the build order are done, and
+**Phase 1 is complete.** All eleven steps of the build order are done and
 `tests.py` holds 90 passing tests:
 
 ```
-DB_VENDOR=sqlite make command CMD="test plugins.osaps_typesetting.tests"
+python src/manage.py test plugins.osaps_typesetting.tests
 ```
 
-Note the module path — `test plugins.osaps_typesetting` fails, see below.
+Note the module path — `test plugins.osaps_typesetting` fails on a namespace
+package; see "Testing a plugin" below.
 
-What is left is not building but shipping: give the plugin a remote, get the two
-CDL reviews, and decide on the deferred items under "Open questions" (notifications,
-an accept/decline step, pre-completion checks, galley delete).
+What is left is not building but review. Phase 1 has not been read by anyone
+else, and CDL requires two developers to review before any upstream PR. The
+deferred items are under "Open questions": notifications, an accept/decline
+step, pre-completion checks and galley delete.
 
-Before anything else: `make command CMD="check"` from the repo root, and
-remember that installing or re-registering the plugin needs a server restart.
-
-The local fixture is article 1 on `pawprints`, in the `osaps_typesetting`
-stage, round 1, assigned to Tom Tsetter, with the real OS-APS HTML export
-uploaded as galley 3. That galley still reports one missing figure
-(`image1.png` after rewriting) — attaching it on the galley edit page is a good
-first manual check that everything still works.
+When picking the work up again, run Django's system checks first, and remember
+that installing or re-registering the plugin needs a server restart — as does
+adding any new module or package to it.
 
 ## Where the build is
 
@@ -99,11 +96,15 @@ local virtualenv on this machine.
 the Janeway root shows a clean tree no matter what you change here. This is
 normal for Janeway — plugins live in their own repositories.
 
-**As of 29 July 2026 this directory is its own git repository**, on branch
-`main`, with steps 1–8 as the initial commit. Run `git` commands from inside the
-plugin directory and they apply to the plugin; run them from the Janeway root and
-they apply to Janeway. There is no remote yet — pushing somewhere CDL can see it
-is a prerequisite for the two-developer review.
+**This directory is its own git repository**, published at
+<https://github.com/justingonder/janeway-osaps-typesetting> on 30 July 2026.
+Run `git` commands from inside the plugin directory and they apply to the plugin;
+run them from the Janeway root and they apply to Janeway.
+
+Plugin files sit at the repository root, matching upstream Janeway plugins, so it
+clones straight into place:
+`git clone <url> src/plugins/osaps_typesetting`. The directory name is the Django
+app label and must be exactly that.
 
 ## Decisions made while building
 
@@ -205,22 +206,7 @@ Rules for any script that touches the dev database:
 - **Galley controls on the kanban card.** The card now shows the round number and
   galley count, but there is no way to act on an article from the board itself.
   Core's card does not offer that either, so this is probably fine.
-## Local test fixture
-
-As of 28 July 2026 the dev database has article 1, "OS-APS Typesetting Test", in
-the `osaps_typesetting` stage on the `pawprints` journal, walked through Review
-and Copyediting by hand. It has exactly one file — pk 2, "Manuscript File",
-`Example Document.docx` — which is the DOCX a typesetter would take into OS-APS.
-
-There are **no `CopyeditAssignment` rows** for it, so `files_for_typesetting()`
-returns only the manuscript file. The `Q(copyeditor_files__article=article)` leg
-of that query is therefore still unexercised; if you want to test it, create a
-copyedit assignment with an uploaded file.
-
-Accounts: "Justin Gonder" (staff/editor) and "Tom Tsetter" (pk 2, holds the
-`typesetter` role on `pawprints`, added 28 July 2026). Round 1 of article 1 has
-an assignment to Tom Tsetter with `Example Document.docx` attached — this is the
-fixture Steps 6 and 7 build on.
+## Implementation notes
 
 **The plugin serves its own files.** `security.logic.can_view_file` — which
 guards Janeway's `article_file_download` — knows about core's production,
